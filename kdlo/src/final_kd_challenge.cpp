@@ -1,7 +1,7 @@
 // imported libraries
 #include "control_msgs/JointControllerState.h"
 #include "geometry_msgs/PointStamped.h"
-#include "nav_msgs/Path.h"
+
 // C++ client library as ROS interface
 #include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
@@ -786,84 +786,10 @@ public:
   }
 };
 
-void get_path(const nav_msgs::Path::ConstPtr &msg, int sampling,
-              ros::Rate *rate, uthai_kd *uthai,
-              KDL::ChainFkSolverPos_recursive *r_fksolver,
-              KDL::ChainFkSolverPos_recursive *l_fksolver) {
-  for (int idx = 2; idx < msg->poses.size(); idx++) {
-
-    double x = msg->poses[idx].pose.position.x,
-           y = msg->poses[idx].pose.position.y, roll, pitch, yaw;
-
-    std::cout << "step: " << idx << ' x: ' << x << ' y: ' << y << std::endl;
-    tf::Quaternion q;
-    q.setX(msg->poses[idx].pose.orientation.x);
-    q.setY(msg->poses[idx].pose.orientation.y);
-    q.setZ(msg->poses[idx].pose.orientation.z);
-    q.setW(msg->poses[idx].pose.orientation.w);
-    tf::Matrix3x3 m(q);
-    m.getRPY(roll, pitch, yaw);
-    char foot = msg->poses[idx].header.frame_id[0];
-    std::cout << "foot: " << foot << std::endl;
-    char foot_stance;
-    if (foot == 'r')
-      foot_stance = 'l';
-    if (foot == 'l')
-      foot_stance = 'r';
-    std::cout << idx << ".)  x = " << x << "   , y = " << y
-              << "   , yaw = " << yaw << "   , foot = " << foot << "\n";
-
-    uthai->uthai_will_go_on(foot_stance, r_fksolver, l_fksolver, rate,
-                            sampling * 1.5);
-
-    // set the target hip and knee positions based on the foot stance
-    if (foot_stance == 'r') {
-
-      uthai->T_rhip_p = -0.3;  // lean on the right leg
-      uthai->T_rknee_p = 0.55; // bend the right knee
-
-      uthai->T_lhip_p += -0.2; // lean towards the right which lift the left leg
-      uthai->T_lknee_p += 0.5; // bend the left knee
-
-      uthai->T_lhip_y =
-          yaw; // yaw the left hip to fit the next left foot stamped orientation
-      uthai->T_rhip_y = 0;
-    } else if (foot_stance == 'l') {
-
-      uthai->T_lhip_p = -0.3;  // lean on the left leg
-      uthai->T_lknee_p = 0.55; // bend the left knee
-
-      uthai->T_rhip_p +=
-          -0.2; // lean towards the left  which lift the right leg
-      uthai->T_rknee_p += 0.5; // bend the right knee
-
-      uthai->T_rhip_y = yaw; // yaw the right hip to fit the next right foot
-                             // stamped orientation
-      uthai->T_lhip_y = 0;
-    }
-
-    // prepare the joints to move accordingly
-    uthai->uthai_will_go_on(foot_stance, r_fksolver, l_fksolver, rate,
-                            sampling);
-    double tfoot[] = {x, y, 0}; // the target foot step.
-    uthai->moveleg(tfoot, foot_stance, r_fksolver, l_fksolver, rate,
-                   sampling * 2);
-    uthai->uthai_will_go_on('d', r_fksolver, l_fksolver, rate, sampling);
-  }
-
-  // reset the joints pose
-  uthai->T_rhip_p = -0.3;
-  uthai->T_rknee_p = 0.55;
-  uthai->T_lhip_p = -0.3;
-  uthai->T_lknee_p = 0.55;
-  uthai->uthai_will_go_on('d', r_fksolver, l_fksolver, rate, 100);
-  std::cout << "Finish! \n";
-}
-
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "kd_passion");
+  ros::init(argc, argv, "kd_passion_challenge");
   ros::NodeHandle nh;
-  ros::Rate rate(100); // 30/100//80
+  ros::Rate rate(100); // you can change the value
   std::string urdf_file;
   nh.getParam("urdf_file", urdf_file);
   uthai_kd uthai(&nh, urdf_file, "base_link", "r_foot_ft_link",
@@ -871,13 +797,15 @@ int main(int argc, char **argv) {
   KDL::ChainFkSolverPos_recursive r_fksolver(uthai.r_leg);
   KDL::ChainFkSolverPos_recursive l_fksolver(uthai.l_leg);
 
-  int sampling = 200;
+  int sampling = 200; // you can change the value
 
-  ros::Subscriber sub_path = nh.subscribe<nav_msgs::Path>(
-      "uthai/footstep_path", 100,
-      boost::bind(get_path, _1, sampling, &rate, &uthai, &r_fksolver,
-                  &l_fksolver));
+  /* ----------------------------------------------------- */
 
+  // TODO: add your code here to make the robot complete the challenge
+
+  /* ----------------------------------------------------- */
+
+  std::cout << "DONE!" << std::endl;
   double home[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uthai.set_jointpose(home);
   uthai.set_T_jointpose(home);

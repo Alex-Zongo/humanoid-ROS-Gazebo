@@ -2,6 +2,8 @@
 <robot name="uthai" 
     xmlns:xacro="http://www.ros.org/wiki/xacro">
     <xacro:property name="pi" value="3.141592654"/>
+    <xacro:property name="fixed_body" value="False"/>
+    
     <!-- Import xacro file -->
     <xacro:include filename="$(find uthai_description)/urdf/materials.xacro" />
     <xacro:include filename="$(find uthai_description)/urdf/uthai.visuals.xacro" />
@@ -11,12 +13,15 @@
     <xacro:include filename="$(find uthai_description)/urdf/uthai.left_leg.xacro" />
     <xacro:include filename="$(find uthai_description)/urdf/uthai.gazebo.xacro" />
     <!-- Used for fixing robot -->
-    <!--<link name="world"></link> 
-    <joint name="world_fixed" type="fixed">
-        <origin xyz="0 0 0.764" rpy="0 0 0"/>
-        <parent link="world"/>
-        <child link="base_link"/>
-    </joint> -->
+    <xacro:if value="${fixed_body == True}">
+        <link name="world"></link>
+        <joint name="world_fixed" type="fixed">
+            <origin xyz="0 0 0." rpy="0 0 0"/>
+            <parent link="world"/>
+            <child link="base_link"/>
+        </joint> 
+    </xacro:if>
+
     <link name="base_link"></link>
     <joint name="base_fixed" type="fixed">
         <origin xyz="0 0 0" rpy="0 0 0"/>

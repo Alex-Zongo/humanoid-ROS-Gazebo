@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from __future__ import division, print_function
 import argparse
@@ -13,7 +13,8 @@ from std_srvs.srv import Empty
 from nav_msgs.srv import GetPlan
 from nav_msgs.msg import Path, Odometry
 
-parser = argparse.ArgumentParser(description='x1 y1 z1 x2 y2 z2  -->  0 0 0 9 9 90')
+parser = argparse.ArgumentParser(
+    description='x1 y1 z1 x2 y2 z2  -->  0 0 0 9 9 90')
 parser.add_argument('integers', metavar='N', type=int, nargs='+',
                     help='an integer for the accumulator')
 args = parser.parse_args().integers
@@ -24,9 +25,10 @@ class rviz_footprint:
     """ genarate marker to visualize footstep path """
 
     def __init__(self, footsteps):
-        self.FOOT_VECTOR3 = Vector3(1.5,2.5,0.2)
-        self.TEXT_VECTOR3 = Vector3(1,1,1.5)
-        self.rviz_footsteps_pub = rospy.Publisher('/footprint', MarkerArray, queue_size=10)
+        self.FOOT_VECTOR3 = Vector3(1.5, 2.5, 0.2)
+        self.TEXT_VECTOR3 = Vector3(1, 1, 1.5)
+        self.rviz_footsteps_pub = rospy.Publisher(
+            '/footprint', MarkerArray, queue_size=10)
         self.rate = rospy.Rate(10)  # 10h
         self.foots = []
         self.foot = Marker()

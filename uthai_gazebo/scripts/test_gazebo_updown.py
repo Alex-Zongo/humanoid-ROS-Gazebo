@@ -55,6 +55,7 @@ def main():
     time.sleep(5)
 
     while not rospy.is_shutdown():
+        post(q_set[0])
         time.sleep(5)
         LHP.publish(-0.25)
         LKP.publish(0.5)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from __future__ import division, print_function
 
@@ -9,13 +9,13 @@ import random
 import json
 import argparse
 import copy
-from Tkinter import *
+from tkinter import *
 from tf.transformations import quaternion_about_axis, euler_from_quaternion
-from numpy import cos, sin,tan, arctan2, deg2rad, rad2deg, square, sqrt,pi
-from std_msgs.msg import Float32,Header,ColorRGBA
+from numpy import cos, sin, tan, arctan2, deg2rad, rad2deg, square, sqrt, pi
+from std_msgs.msg import Float32, Header, ColorRGBA
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetMap
-from geometry_msgs.msg import PoseStamped, PointStamped,PoseWithCovarianceStamped,Vector3
+from geometry_msgs.msg import PoseStamped, PointStamped, PoseWithCovarianceStamped, Vector3
 from visualization_msgs.msg import MarkerArray, Marker
 from nav_msgs.srv import GetPlan
 from nav_msgs.msg import Path
@@ -23,9 +23,9 @@ from time import sleep, time
 from pyexcel_ods import get_data
 
 ROBOT_SIZE = 4
-FOOT_SIZE = 2
+FOOT_SIZE = 2  # how far the foot step are to be separated
 THETA_LIST = []
-COM_2_FOOT = [0,0]
+COM_2_FOOT = [0, 0]
 UTHAI_between = 0.18
 SCALE_REAL = 1.0
 
@@ -34,8 +34,14 @@ parser.add_argument('string', metavar='N', type=str, nargs='+',
                     help='ods file name')
 args = parser.parse_args().string
 
+
 def get_footcost_from_excel():
-    global SCALE_REAL,UTHAI_between,THETA_LIST
+    """
+    Reads Parameters from the footstep_cost file to define
+    the footstep parameters for every possible degree and position in a grid.
+    """
+
+    global SCALE_REAL, UTHAI_between, THETA_LIST
     # data = get_data("src/Foot_right_cost_test2.ods").popitem()[1]
     data = get_data(args[0]).popitem()[1]
     robot_row = data.pop(0)[0]
@@ -46,10 +52,12 @@ def get_footcost_from_excel():
     w_param = data.pop(0)
     degree = data.pop(0)
     THETA_LIST += degree
+
     COST_FOOT_R = {}
     COST_FOOT_L = {}
     THETA_COST_FOOT_R = {}
     THETA_COST_FOOT_L = {}
+
     for deg in degree:
         COST_FOOT_R[deg] = {}
         for n in range(row):
@@ -59,6 +67,7 @@ def get_footcost_from_excel():
                 cost = row_data[x]
                 if cost != '':
                     COST_FOOT_R[deg][(x, y)] = cost
+
     "generate footstep cost every possible degree"
     """
     R' = [cos()   sin()]
@@ -72,30 +81,45 @@ def get_footcost_from_excel():
             THETA_COST_FOOT_R[T][i] = {}
             THETA_COST_FOOT_L[T][-i] = {}
             for k in COST_FOOT_R[i].keys():
-                theta_x_r = int(round(cos(deg2rad(T))*k[0] - sin(deg2rad(T)) * k[1]))
-                theta_x_l = int(round(cos(deg2rad(T))*(-k[0]) - sin(deg2rad(T)) * k[1]))
-                theta_y_r = int(round(sin(deg2rad(T)) * k[0] + cos(deg2rad(T)) * k[1]))
-                theta_y_l = int(round(sin(deg2rad(T)) * (-k[0]) + cos(deg2rad(T)) * k[1]))
-                    
+                theta_x_r = int(
+                    round(cos(deg2rad(T))*k[0] - sin(deg2rad(T)) * k[1]))
+                theta_x_l = int(
+                    round(cos(deg2rad(T))*(-k[0]) - sin(deg2rad(T)) * k[1]))
+                theta_y_r = int(
+                    round(sin(deg2rad(T)) * k[0] + cos(deg2rad(T)) * k[1]))
+                theta_y_l = int(
+                    round(sin(deg2rad(T)) * (-k[0]) + cos(deg2rad(T)) * k[1]))
+
                 '''Linear equation : x + tan(theta)*y - 4 = 0'''
                 '''distance : |ax + by +c| / sqrt(a^2 + b^2)'''
-                if T != 90 and T != 270 :
-                    cost_r = w_param[0]*sqrt(square(theta_x_r) + square(theta_y_r)) + w_param[1]*(abs(theta_x_r + tan(deg2rad(T))*theta_y_r + normal_line)/sqrt(square(theta_x_r) + square(theta_y_r))) 
-                    cost_l = w_param[0]*sqrt(square(theta_x_l) + square(theta_y_l)) + w_param[1]*(abs(theta_x_l + tan(deg2rad(T))*theta_y_l + normal_line)/sqrt(square(theta_x_l) + square(theta_y_l))) 
-                    THETA_COST_FOOT_R[T][i][(theta_x_r, theta_y_r)] = cost_r + COST_FOOT_R[i][k]
-                    THETA_COST_FOOT_L[T][-i][(theta_x_l, theta_y_l) ] = cost_l + COST_FOOT_R[i][k]
-                else :
-                    cost_r = w_param[0]*sqrt(square(theta_x_r) + square(theta_y_r)) + w_param[1]*theta_y_r
-                    cost_l = w_param[0]*sqrt(square(theta_x_l) + square(theta_y_l)) + w_param[1]*theta_y_l
-                    THETA_COST_FOOT_R[T][i][(theta_x_r, theta_y_r)] = cost_r + COST_FOOT_R[i][k]
-                    THETA_COST_FOOT_L[T][-i][(theta_x_l, theta_y_l) ] = cost_l + COST_FOOT_R[i][k]
+
+                if T != 90 and T != 270:
+                    cost_r = w_param[0]*sqrt(square(theta_x_r) + square(theta_y_r)) + w_param[1]*(abs(
+                        theta_x_r + tan(deg2rad(T))*theta_y_r + normal_line)/sqrt(square(theta_x_r) + square(theta_y_r)))
+                    cost_l = w_param[0]*sqrt(square(theta_x_l) + square(theta_y_l)) + w_param[1]*(abs(
+                        theta_x_l + tan(deg2rad(T))*theta_y_l + normal_line)/sqrt(square(theta_x_l) + square(theta_y_l)))
+                    THETA_COST_FOOT_R[T][i][(
+                        theta_x_r, theta_y_r)] = cost_r + COST_FOOT_R[i][k]
+                    THETA_COST_FOOT_L[T][-i][(theta_x_l, theta_y_l)
+                                             ] = cost_l + COST_FOOT_R[i][k]
+                else:
+                    cost_r = w_param[0]*sqrt(square(theta_x_r) +
+                                             square(theta_y_r)) + w_param[1]*theta_y_r
+                    cost_l = w_param[0]*sqrt(square(theta_x_l) +
+                                             square(theta_y_l)) + w_param[1]*theta_y_l
+                    THETA_COST_FOOT_R[T][i][(
+                        theta_x_r, theta_y_r)] = cost_r + COST_FOOT_R[i][k]
+                    THETA_COST_FOOT_L[T][-i][(theta_x_l, theta_y_l)
+                                             ] = cost_l + COST_FOOT_R[i][k]
     return THETA_COST_FOOT_R, THETA_COST_FOOT_L
 
 
-
+# getting the cost for the footstep
 THETA_COST_FOOT_R, THETA_COST_FOOT_L = get_footcost_from_excel()
-print("scale real world = ",SCALE_REAL)
+print("scale real world = ", SCALE_REAL)
 
+
+# defines a queue for step planning
 class PriorityQueue:
     def __init__(self):
         self.elements = []
@@ -109,6 +133,8 @@ class PriorityQueue:
     def get(self):
         return heapq.heappop(self.elements)[1]
 
+# a foot step grip with its properties. (graph)
+
 
 class FootstepGrid(object):
     def __init__(self, MAP):
@@ -117,17 +143,26 @@ class FootstepGrid(object):
         self.pose = MAP.map.info.origin
         self.data = list(MAP.map.data)
         self.start = None
-        self.goal = None
+        self.goal = []
         self.weights = {}
         self.fcost = {}
 
     def cost(self, from_node, to_node):
-        if to_node[2] == self.goal[2] :
-            return self.fcost[to_node] 
+        '''
+        cost of moving from the current step to the next
+        params:
+            from_node: current node
+            to_node: the neighboring node
+        '''
+        if to_node[2] == self.goal[2]:
+            return self.fcost[to_node]
         else:
-            return self.fcost[to_node] + 0.1 
+            return self.fcost[to_node] + 0.1
 
     def heuristic(self, a, b):
+        """
+        Euclidian distance between two points (steps)
+        """
         (x1, y1, theta1, s1) = a
         (x2, y2, theta2, s2) = b
         return sqrt(square(x1 - x2) + square(y1 - y2))
@@ -146,13 +181,20 @@ class FootstepGrid(object):
         return (p % self.width, int(p / self.height), 0)
 
     def in_bounds(self, id):
+        """
+        filter a point to be with bounds
+        """
         (x, y, theta, s) = id
         return 0 <= x < self.width and 0 <= y < self.height
 
     def passable(self, id):
+        """
+        check for obstacle
+        """
         return self.data[self.point2idx(id)] == 0
 
     def collision(self, id):
+        """Collision check"""
         (x, y, theta, s) = id
         results = [(x + ROBOT_SIZE, y, self.goal[2], 1), (x, y - ROBOT_SIZE, self.goal[2], 1), (x - ROBOT_SIZE, y, self.goal[2], 1), (x, y + ROBOT_SIZE, self.goal[2], 1),
                    (x + ROBOT_SIZE, y + ROBOT_SIZE, self.goal[2], 1), (x - ROBOT_SIZE, y + ROBOT_SIZE, self.goal[2], 1), (x + ROBOT_SIZE, y - ROBOT_SIZE, self.goal[2], 1), (x - ROBOT_SIZE, y - ROBOT_SIZE, self.goal[2], 1)]
@@ -162,6 +204,8 @@ class FootstepGrid(object):
         return True
 
     def foot_collision(self, id):
+        """ This function checks for collision between the feet """
+
         (x, y, theta, s) = id
         # results = [(x + FOOT_SIZE, y, self.goal[2], 1), (x, y - FOOT_SIZE, self.goal[2], 1), (x - FOOT_SIZE, y, self.goal[2], 1), (x, y + FOOT_SIZE, self.goal[2], 1),
         #            (x + FOOT_SIZE, y + FOOT_SIZE, self.goal[2], 1), (x - FOOT_SIZE, y + FOOT_SIZE, self.goal[2], 1), (x + FOOT_SIZE, y - FOOT_SIZE, self.goal[2], 1), (x - FOOT_SIZE, y - FOOT_SIZE, self.goal[2], 1)]
@@ -175,6 +219,7 @@ class FootstepGrid(object):
         return True
 
     def square_neighbors(self, id):
+        """ defines the neighbors of the foot => up, down, left and right  """
         (x, y, theta, s) = id
         # results = [(x + 1, y, self.goal[2], 1), (x, y - 1, self.goal[2], 1), (x - 1, y, self.goal[2], 1), (x, y + 1, self.goal[2], 1),
         #    (x + 1, y + 1, self.goal[2], 1), (x - 1, y + 1, self.goal[2], 1), (x + 1, y - 1, self.goal[2], 1), (x - 1, y - 1, self.goal[2], 1)]
@@ -186,7 +231,8 @@ class FootstepGrid(object):
         return results
 
     def footstep_neighbors(self, id):
-        ''' building the ZMP polygon that foot possible step inside and robot should be stable '''
+        ''' building the ZMP polygon and filter the neighbors so that 
+        the next possible foot steps lie inside and robot should be stable '''
         (x, y, theta, s) = id
         results = []
         self.fcost = {}
@@ -201,7 +247,7 @@ class FootstepGrid(object):
             new_s = 0
 
         for Tr in THETA_LIST:
-            T = (id[2] + Tr)% 360
+            T = (id[2] + Tr) % 360
 
             cost_current_support = {}
 
@@ -221,6 +267,7 @@ class FootstepGrid(object):
         return results
 
     def draw_grid(self, id=None):
+        ''' utlility function that draws a grid around the foot step '''
         for y in range(self.height - 1, -1, -1):
             if y < 10:
                 pmap = '{} '.format(y)
@@ -248,9 +295,10 @@ class rviz_footprint:
     """ genarate marker to visualize footstep path """
 
     def __init__(self, footsteps):
-        self.FOOT_VECTOR3 = Vector3(4,8,0.2)
-        self.TEXT_VECTOR3 = Vector3(1,1,1.5)
-        self.rviz_footsteps_pub = rospy.Publisher('/footprint', MarkerArray, queue_size=10)
+        self.FOOT_VECTOR3 = Vector3(4, 8, 0.2)
+        self.TEXT_VECTOR3 = Vector3(1, 1, 1.5)
+        self.rviz_footsteps_pub = rospy.Publisher(
+            '/footprint', MarkerArray, queue_size=10)
         self.rate = rospy.Rate(10)  # 10h
         self.foots = []
         self.foot = Marker()
@@ -259,7 +307,7 @@ class rviz_footprint:
         self.foot.ns = 'footstep'
         self.foot.scale = self.FOOT_VECTOR3
         if footsteps == []:
-            print('There is impossible path to reach goalself.')
+            print('There is an impossible path to reach goal.')
             exit()
 
         for n in range(len(footsteps)):
@@ -297,24 +345,32 @@ class rviz_footprint:
         for i in range(0, 20):
             self.rviz_footsteps_pub.publish(self.footstep_path)
             self.rate.sleep()
+
+
+# A-star search algorithm to define the next step with lower cost towards the goal
 def a_star_search(graph, mode='continue'):
+    """
+    params:
+        graph: foot step 
+    """
     if not(graph.passable(graph.start) and graph.in_bounds(graph.start)):
-        
-        print('start point is impassable or out of bounds',graph.start)
+        print('start point is impassable or out of bounds', graph.start)
     if not(graph.passable(graph.goal) and graph.in_bounds(graph.goal)):
-        print('goal point is impassable or out of bounds',graph.goal)
+        print('goal point is impassable or out of bounds', graph.goal)
     if not(graph.passable(graph.start) and graph.passable(graph.goal) and graph.in_bounds(graph.start) and graph.in_bounds(graph.goal)):
         return {}, {}
-    G = {}
-    came_from = {}
-    open_set = PriorityQueue()
 
+    G = {}  # cost G(n)
+
+    came_from = {}
+
+    open_set = PriorityQueue()
     open_set.put(graph.start, 0)
     came_from[graph.start] = None
     G[graph.start] = 0
-    Wd = 0
-    Wg = 2
-    Wh = 1
+
+    Wg = 2  # cost G(n) weight
+    Wh = 1  # heuristic cost weight
     cnt = 0
     lowest_heuristic = None
     while not open_set.empty():
@@ -323,9 +379,9 @@ def a_star_search(graph, mode='continue'):
         if current == graph.goal:
             break
         if mode == 'continue':
-            neighbors = graph.square_neighbors(current)
+            neighbors = list(graph.square_neighbors(current))
         elif mode == 'footstep':
-            neighbors = graph.footstep_neighbors(current)
+            neighbors = list(graph.footstep_neighbors(current))
         if cnt % 500 == 0:
             print(cnt, 'len :', len(neighbors))
         for idx in range(len(neighbors)):
@@ -333,15 +389,15 @@ def a_star_search(graph, mode='continue'):
             new_cost = G[current] + graph.cost(current, next)  # G(n)
             if next not in G or new_cost < G[next]:
                 ''' F(n) = G(n) + H(n) '''
-                next_heuristic = graph.heuristic(graph.goal,next) 
+                next_heuristic = graph.heuristic(graph.goal, next)
                 # priority = Wd * (idx + 1) + Wg * new_cost + Wh * graph.heuristic(graph.goal, next)
                 priority = Wg * new_cost + Wh * next_heuristic
-                if lowest_heuristic == None or (next[2] == graph.goal[2] and next_heuristic < lowest_heuristic) :
+                if lowest_heuristic == None or (next[2] == graph.goal[2] and next_heuristic < lowest_heuristic):
                     lowest_heuristic = next_heuristic
                 open_set.put(next, priority)
                 came_from[next] = current
                 G[next] = new_cost
-    print('lowest_heuristic =',lowest_heuristic)
+    print('lowest_heuristic = ', lowest_heuristic)
     return came_from, G
 
 
@@ -371,7 +427,7 @@ def via_point_generate(path):
     i = 0
     while i < len(vp):
         if i + 1 < len(vp):
-            if (vp[i][0] - vp[i + 1][0] == 0 and vp[i][0] - vp[i - 1][0] == 0)or \
+            if (vp[i][0] - vp[i + 1][0] == 0 and vp[i][0] - vp[i - 1][0] == 0) or \
                     (vp[i][1] - vp[i + 1][1] == 0 and vp[i][1] - vp[i - 1][1] == 0):
                 vp.remove(vp[i])
                 # if i != len(vp) - 2:
@@ -502,18 +558,16 @@ def map_search(g, start, goal, mode='continue'):
     print('searching...')
     start_time = time()
 
-
     g.start = (start[0], start[1], start[2], start[3])
     g.goal = (goal[0], goal[1], goal[2], goal[3])
-    came_from, cost_so_far= a_star_search(g, mode)
+    came_from, cost_so_far = a_star_search(g, mode)
     if came_from == {} and cost_so_far == {}:
         return []
     path = reconstruct_path(came_from, g.start, g.goal)
     print('elapsed_time : ', time() - start_time)
-    print('start :',start)
-    print('goal :',goal)
+    print('start :', start)
+    print('goal :', goal)
     return path
-
 
 
 def nav_service_footstep_planning(g):
@@ -570,41 +624,51 @@ def nav_service_footstep_planning(g):
     s = rospy.Service('get_plan', GetPlan, vp_send)
     rospy.spin()
 
+
 class nav_spin_footstep_planning:
 
-    def __init__(self,g):
-        self.new_start = (0,0,0)
-        self.new_goal = (0,0,0)
-        self.old_start = (0.0,0)
-        self.old_goal = (0,0,0)
-        self.sub_start = rospy.Subscriber('/initialpose',PoseWithCovarianceStamped,self.__start)
-        self.sub_goal = rospy.Subscriber('/move_base_simple/goal',PoseStamped,self.__goal)
-        self.pb_path = rospy.Publisher('uthai/footstep_path',Path,queue_size=1)
-        self.start_L = (0,0,0,0)
-        self.start_R = (0,0,0,1)
-        self.goal_L = (0,0,0,0)
-        self.goal_R = (0,0,0,1)
+    def __init__(self, g):
+        self.new_start = (0, 0, 0)
+        self.new_goal = (0, 0, 0)
+        self.old_start = (0.0, 0)
+        self.old_goal = (0, 0, 0)
+        self.sub_start = rospy.Subscriber(
+            '/initialpose', PoseWithCovarianceStamped, self.__start)
+        self.sub_goal = rospy.Subscriber(
+            '/move_base_simple/goal', PoseStamped, self.__goal)
+        self.pb_path = rospy.Publisher(
+            'uthai/footstep_path', Path, queue_size=1)
+        self.start_L = (0, 0, 0, 0)
+        self.start_R = (0, 0, 0, 1)
+        self.goal_L = (0, 0, 0, 0)
+        self.goal_R = (0, 0, 0, 1)
 
         rospy.spin()
 
-    def __searching(self,start,goal):
+    def __searching(self, start, goal):
 
+        Diff_x_start = round(
+            cos(deg2rad(start[2])) * COM_2_FOOT[0] - sin(deg2rad(start[2])) * COM_2_FOOT[1])
+        Diff_y_start = round(
+            sin(deg2rad(start[2])) * COM_2_FOOT[0] + cos(deg2rad(start[2])) * COM_2_FOOT[1])
+        Diff_x_goal = round(
+            cos(deg2rad(goal[2])) * COM_2_FOOT[0] - sin(deg2rad(goal[2])) * COM_2_FOOT[1])
+        Diff_y_goal = round(
+            sin(deg2rad(goal[2])) * COM_2_FOOT[0] + cos(deg2rad(goal[2])) * COM_2_FOOT[1])
 
-        Diff_x_start = round(cos(deg2rad(start[2])) * COM_2_FOOT[0] - sin(deg2rad(start[2])) * COM_2_FOOT[1])
-        Diff_y_start = round(sin(deg2rad(start[2])) * COM_2_FOOT[0] + cos(deg2rad(start[2])) * COM_2_FOOT[1])
-        Diff_x_goal = round(cos(deg2rad(goal[2])) * COM_2_FOOT[0] - sin(deg2rad(goal[2])) * COM_2_FOOT[1])
-        Diff_y_goal = round(sin(deg2rad(goal[2])) * COM_2_FOOT[0] + cos(deg2rad(goal[2])) * COM_2_FOOT[1])
-
-        self.start_R = (start[0]+Diff_x_start , start[1] - Diff_y_start , start[2] ,1)
-        self.goal_R = (goal[0]+Diff_x_goal , goal[1] - Diff_y_goal , goal[2] ,1)
+        self.start_R = (start[0]+Diff_x_start,
+                        start[1] - Diff_y_start, start[2], 1)
+        self.goal_R = (goal[0]+Diff_x_goal, goal[1] - Diff_y_goal, goal[2], 1)
 
         vp = map_search(g, self.start_R, self.goal_R, mode='footstep')
-        if vp == [] :
+        if vp == []:
             print("error no path possible")
             return 0
-        self.start_L = (vp[0][0]-Diff_x_start , vp[0][1] - Diff_y_start , vp[0][2] ,0)
-        self.goal_L = (vp[-1][0]-Diff_x_goal , vp[-1][1] - Diff_y_goal , vp[-1][2] ,0)
-        
+        self.start_L = (vp[0][0]-Diff_x_start, vp[0]
+                        [1] - Diff_y_start, vp[0][2], 0)
+        self.goal_L = (vp[-1][0]-Diff_x_goal, vp[-1]
+                       [1] - Diff_y_goal, vp[-1][2], 0)
+
         vp = [self.start_L] + vp + [self.goal_L]
         ps_list = []
         grid2real = []
@@ -634,12 +698,15 @@ class nav_spin_footstep_planning:
                 real.pose.position.x = 0
                 real.pose.position.y = 0
                 grid2real.append(real)
-            else :
-                real.pose.position.x = -((v[0]*SCALE_REAL) - ps_list[-2].pose.position.x*SCALE_REAL)*sin(rad_oldstep) + ((v[1]*SCALE_REAL) - ps_list[-2].pose.position.y*SCALE_REAL)*cos(rad_oldstep)
-                real.pose.position.y = -(((v[0]*SCALE_REAL) - ps_list[-2].pose.position.x*SCALE_REAL)*cos(rad_oldstep) + ((v[1]*SCALE_REAL) - ps_list[-2].pose.position.y*SCALE_REAL)*sin(rad_oldstep))
+            else:
+                real.pose.position.x = -((v[0]*SCALE_REAL) - ps_list[-2].pose.position.x*SCALE_REAL)*sin(
+                    rad_oldstep) + ((v[1]*SCALE_REAL) - ps_list[-2].pose.position.y*SCALE_REAL)*cos(rad_oldstep)
+                real.pose.position.y = -(((v[0]*SCALE_REAL) - ps_list[-2].pose.position.x*SCALE_REAL)*cos(
+                    rad_oldstep) + ((v[1]*SCALE_REAL) - ps_list[-2].pose.position.y*SCALE_REAL)*sin(rad_oldstep))
                 grid2real.append(real)
-            
-            qtn_real = quaternion_about_axis(deg2rad(v[2])-rad_oldstep, (0, 0, 1))
+
+            qtn_real = quaternion_about_axis(
+                deg2rad(v[2])-rad_oldstep, (0, 0, 1))
             real.pose.orientation.x = qtn_real[0]
             real.pose.orientation.y = qtn_real[1]
             real.pose.orientation.z = qtn_real[2]
@@ -655,34 +722,36 @@ class nav_spin_footstep_planning:
         footprints.clear_footprints()
         footprints.pub_footprints()
 
-        print('start_L = ',self.start_L)
-        print('start_R = ',self.start_R)
-        print('goal_L = ',self.goal_L)
-        print('goal_R = ',self.goal_R)
+        print('start_L = ', self.start_L)
+        print('start_R = ', self.start_R)
+        print('goal_L = ', self.goal_L)
+        print('goal_R = ', self.goal_R)
         self.pb_path.publish(path_realworld)
         print(path_realworld)
         return path_realworld
 
-    def __start(self,data):
+    def __start(self, data):
 
-        theta = euler_from_quaternion([data.pose.pose.orientation.x,data.pose.pose.orientation.y,
-                                       data.pose.pose.orientation.z,data.pose.pose.orientation.w,])
-        theta = int(round(rad2deg(theta[2]+3*pi/2)/10)*10)%360
-        self.new_start = (int(round(data.pose.pose.position.x)),int(round(data.pose.pose.position.y)),theta)
-        print('self.new_start = ',self.new_start)
+        theta = euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y,
+                                       data.pose.pose.orientation.z, data.pose.pose.orientation.w, ])
+        theta = int(round(rad2deg(theta[2]+3*pi/2)/10)*10) % 360
+        self.new_start = (int(round(data.pose.pose.position.x)), int(
+            round(data.pose.pose.position.y)), theta)
+        print('self.new_start = ', self.new_start)
 
-    def __goal(self,data):
-        theta = euler_from_quaternion([data.pose.orientation.x,data.pose.orientation.y,
-                                       data.pose.orientation.z,data.pose.orientation.w])
-        theta = int(round(rad2deg(theta[2]+3*pi/2)/10)*10)%360
-        self.new_goal = (int(round(data.pose.position.x)),int(round(data.pose.position.y)),theta)
-        print('self.new_goal = ',self.new_goal)
-        if self.new_goal != self.old_goal :
-            self.__searching(self.new_start,self.new_goal)
+    def __goal(self, data):
+        theta = euler_from_quaternion([data.pose.orientation.x, data.pose.orientation.y,
+                                       data.pose.orientation.z, data.pose.orientation.w])
+        theta = int(round(rad2deg(theta[2]+3*pi/2)/10)*10) % 360
+        self.new_goal = (int(round(data.pose.position.x)),
+                         int(round(data.pose.position.y)), theta)
+        print('self.new_goal = ', self.new_goal)
+        if self.new_goal != self.old_goal:
+            self.__searching(self.new_start, self.new_goal)
         self.new_start = self.new_goal
-        self.old_start = (self.new_start[0],self.new_start[1],self.new_start[2])
-        self.old_goal = (self.new_goal[0],self.new_goal[1],self.new_goal[2])
-
+        self.old_start = (self.new_start[0],
+                          self.new_start[1], self.new_start[2])
+        self.old_goal = (self.new_goal[0], self.new_goal[1], self.new_goal[2])
 
 
 if __name__ == '__main__':
@@ -692,7 +761,6 @@ if __name__ == '__main__':
     call_map = rospy.ServiceProxy('static_map', GetMap)
     MAP = call_map()
     g = FootstepGrid(MAP)
-
 
     # path = nav_service_footstep_planning(g)
     path = nav_spin_footstep_planning(g)

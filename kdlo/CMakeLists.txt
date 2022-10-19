@@ -34,7 +34,12 @@ include_directories(
 
 
 add_executable(final_kd src/final_kd.cpp )
+add_executable(final_kd_challenge src/final_kd_challenge.cpp)
+add_executable(final_kd_challenge_solution src/final_kd_challenge_solution.cpp)
 target_link_libraries(final_kd ${catkin_LIBRARIES})
+target_link_libraries(final_kd_challenge ${catkin_LIBRARIES})
+target_link_libraries(final_kd_challenge_solution ${catkin_LIBRARIES})
+
 
 
 
