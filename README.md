@@ -7,7 +7,7 @@ Static Walk of Humanoid Robot video
 ### Fast Startup Simulation (Noetic)
 
 Supposed: ROS-Noetic installed 0. install lib
-` sudo pip install pyexcel_ods `
+`sudo pip install pyexcel_ods`
 
 1. create workspace.
    ```
@@ -48,6 +48,4 @@ Supposed: ROS-Noetic installed 0. install lib
 
     ![](https://github.com/oeyyey/UTHAI-Humanoid/blob/master/Tutorial/four.png?raw=true)
 
-### rqt_graph
-
-![](https://github.com/oeyyey/UTHAI-Humanoid/blob/master/Tutorial/graph.png?raw=true)
+# Inspired mainly from https://github.com/leossok/UTHAI-Humanoid.git
